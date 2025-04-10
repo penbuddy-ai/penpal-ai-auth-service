@@ -1,5 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import type { Document } from "mongoose";
+
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 
 export type UserDocument = User & Document;
 
@@ -29,13 +30,13 @@ export class User {
   @Prop()
   resetPasswordExpires?: Date;
 
-  @Prop({ default: 'local' })
+  @Prop({ default: "local" })
   provider: string;
 
   @Prop()
   googleId?: string;
 
-  @Prop({ default: 'user' })
+  @Prop({ default: "user" })
   role: string;
 
   @Prop()
