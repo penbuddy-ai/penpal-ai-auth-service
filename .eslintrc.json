@@ -1,7 +1,0 @@
-{
-  "extends": "@antfu",
-  "rules": {
-    "ts/consistent-type-imports": "off",
-    "node/no-process-env": "off"
-  }
-}
