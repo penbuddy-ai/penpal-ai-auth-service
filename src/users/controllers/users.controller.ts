@@ -11,10 +11,10 @@ export class UsersController {
 
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiOperation({ summary: "Récupérer le profil utilisateur" })
+  @ApiOperation({ summary: "Retrieve user profile" })
   @ApiResponse({
     status: 200,
-    description: "Profil utilisateur récupéré avec succès",
+    description: "User profile retrieved successfully",
     schema: {
       type: "object",
       properties: {
@@ -28,8 +28,11 @@ export class UsersController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: "Non autorisé" })
-  @ApiResponse({ status: 404, description: "Utilisateur non trouvé" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 400, description: "Invalid request" })
+  @ApiResponse({ status: 500, description: "Internal server error" })
   @ApiBearerAuth("JWT-auth")
   @Get("profile/:id")
   @UseGuards(JwtAuthGuard)
@@ -40,7 +43,7 @@ export class UsersController {
       return { message: "User not found" };
     }
 
-    // Ne pas renvoyer le mot de passe
+    // Do not return the password
     const { password, ...result } = user;
     return result;
   }

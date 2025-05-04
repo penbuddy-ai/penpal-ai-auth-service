@@ -25,7 +25,12 @@ export class OAuthController {
   @ApiOperation({ summary: "Callback Google OAuth" })
   @ApiQuery({ name: "code", required: true, type: String })
   @ApiQuery({ name: "state", required: false, type: String })
-  @ApiResponse({ status: HttpStatus.OK, description: "Authentification réussie" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Authentication successful" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Get("google/callback")
   @Redirect()
   async googleCallback(
@@ -94,7 +99,11 @@ export class OAuthController {
       },
     },
   })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Données invalides" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("google")
   @HttpCode(HttpStatus.OK)
   async googleAuth(@Body() googleAuthData: GoogleOAuthLoginDto) {
@@ -104,8 +113,12 @@ export class OAuthController {
 
   @ApiOperation({ summary: "Connexion via Facebook OAuth" })
   @ApiBody({ type: FacebookOAuthLoginDto })
-  @ApiResponse({ status: HttpStatus.OK, description: "Connexion réussie" })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Données invalides" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Authentication successful" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("facebook")
   @HttpCode(HttpStatus.OK)
   async facebookAuth(@Body() facebookAuthData: FacebookOAuthLoginDto) {
@@ -115,8 +128,12 @@ export class OAuthController {
 
   @ApiOperation({ summary: "Connexion via Apple OAuth" })
   @ApiBody({ type: AppleOAuthLoginDto })
-  @ApiResponse({ status: HttpStatus.OK, description: "Connexion réussie" })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Données invalides" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Authentication successful" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("apple")
   @HttpCode(HttpStatus.OK)
   async appleAuth(@Body() appleAuthData: AppleOAuthLoginDto) {
@@ -126,8 +143,12 @@ export class OAuthController {
 
   @ApiOperation({ summary: "Connexion via GitHub OAuth" })
   @ApiBody({ type: GithubOAuthLoginDto })
-  @ApiResponse({ status: HttpStatus.OK, description: "Connexion réussie" })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Données invalides" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Authentication successful" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("github")
   @HttpCode(HttpStatus.OK)
   async githubAuth(@Body() githubAuthData: GithubOAuthLoginDto) {

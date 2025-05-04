@@ -51,11 +51,11 @@ export class OAuthService {
   }
 
   /**
-   * Traite le callback de Google OAuth
+   * Handles the Google OAuth callback
    */
   async handleGoogleOAuthCallback(code: string, _state?: string): Promise<any> {
     try {
-      // 1. Échanger le code contre un token d'accès
+      // 1. Exchange the code for an access token
       const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
         code,
         client_id: this.googleClientId,
@@ -66,7 +66,7 @@ export class OAuthService {
 
       const { access_token } = tokenResponse.data;
 
-      // 2. Récupérer les informations du profil
+      // 2. Retrieve the profile information
       const profileResponse = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${access_token}` },
       });
@@ -85,13 +85,13 @@ export class OAuthService {
   }
 
   /**
-   * Gère un profil Google déjà récupéré
+   * Handles a previously retrieved Google profile
    */
   async handleGoogleCallback(profile: any): Promise<any> {
     try {
       this.logger.log(`Processing Google OAuth callback for: ${profile.email}`);
 
-      // Construire le DTO pour l'API DB
+      // Build the DTO for the DB API
       const oauthUserData = {
         profile: {
           provider: "google",
@@ -102,14 +102,14 @@ export class OAuthService {
         },
         firstName: profile.given_name || profile.firstName,
         lastName: profile.family_name || profile.lastName,
-        nativeLanguageCode: null, // À compléter avec les données du profil si disponibles
-        learningLanguageCodes: [], // À compléter avec les données du profil si disponibles
+        nativeLanguageCode: null, // To be completed with profile data if available
+        learningLanguageCodes: [], // To be completed with profile data if available
       };
 
-      // Créer ou mettre à jour l'utilisateur via le UsersService
+      // Create or update the user via the UsersService
       const user = await this.usersService.createOrUpdateOAuthUser(oauthUserData);
 
-      // Générer un token JWT pour l'utilisateur
+      // Generate a JWT token for the user
       return this.generateToken(user);
     }
     catch (error) {
@@ -119,13 +119,13 @@ export class OAuthService {
   }
 
   /**
-   * Gère une authentification Google manuelle (via l'API)
+   * Handles manual Google authentication (via the API)
    */
   async handleManualGoogleAuth(googleAuthData: any): Promise<any> {
     return this.handleOAuthCallback("google", googleAuthData);
   }
 
-  // Cette méthode peut être étendue pour gérer d'autres fournisseurs OAuth (Facebook, Apple, GitHub, etc.)
+  // This method can be extended to handle other OAuth providers (Facebook, Apple, GitHub, etc.)
   async handleOAuthCallback(provider: string, profile: any): Promise<any> {
     switch (provider) {
       case "google":
