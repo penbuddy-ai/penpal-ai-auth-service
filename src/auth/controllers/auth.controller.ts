@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post, Request, UseGuards } from "@nestjs/common";
+import { Body, Controller, HttpCode, HttpStatus, Logger, Post, Request, Res, UseGuards } from "@nestjs/common";
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Response } from "express";
 
 import { UsersService } from "../../users/services/users.service";
 import { RegisterDto } from "../dto/register.dto";
@@ -60,9 +61,36 @@ export class AuthController {
   @Post("login")
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req: any) {
+  async login(@Request() req, @Res({ passthrough: true }) response: Response) {
     this.logger.log(`Login attempt for user: ${req.user.email}`);
-    return this.authService.login(req.user);
+    const authResult = await this.authService.login(req.user);
+
+    // Configuration d'un cookie sécurisé avec le token JWT
+    const cookieOptions = {
+      httpOnly: true, // Empêche JavaScript côté client d'accéder au cookie
+      secure: process.env.NODE_ENV === "production", // Cookies envoyés uniquement via HTTPS en production
+      sameSite: "lax" as const, // Protection contre CSRF tout en permettant les redirections
+      maxAge: 24 * 60 * 60 * 1000, // 24 heures (en millisecondes)
+      path: "/", // Cookie disponible pour tout le site
+    };
+
+    // Définir le cookie avec le token JWT
+    response.cookie("auth_token", authResult.access_token, cookieOptions);
+
+    // Stocker les informations utilisateur de base dans un cookie non-HttpOnly
+    response.cookie("user_info", JSON.stringify({
+      id: authResult.user.id,
+      email: authResult.user.email,
+      firstName: authResult.user.firstName,
+      lastName: authResult.user.lastName,
+      role: authResult.user.role,
+    }), {
+      ...cookieOptions,
+      httpOnly: false, // Le frontend doit pouvoir lire ces informations
+    });
+
+    // Retourner également le résultat d'authentification pour la compatibilité API
+    return authResult;
   }
 
   @ApiOperation({ summary: "Inscription utilisateur" })
@@ -96,5 +124,19 @@ export class AuthController {
     const { password, ...result } = user;
 
     return result;
+  }
+
+  @ApiOperation({ summary: "Déconnexion" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Déconnexion réussie" })
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) response: Response) {
+    this.logger.log("Logout endpoint called");
+
+    // Effacer les cookies d'authentification
+    response.clearCookie("auth_token");
+    response.clearCookie("user_info");
+
+    return { message: "Logout successful" };
   }
 }

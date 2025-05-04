@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Redirect, Res } from "@nestjs/common";
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Response } from "express";
 
 import { AppleOAuthLoginDto, FacebookOAuthLoginDto, GithubOAuthLoginDto, GoogleOAuthLoginDto } from "../dto/oauth-login.dto";
 import { OAuthService } from "../services/oauth.service";
@@ -11,7 +12,64 @@ export class OAuthController {
 
   constructor(private readonly oauthService: OAuthService) {}
 
-  @ApiOperation({ summary: "Connexion via Google OAuth" })
+  @ApiOperation({ summary: "Initier l'authentification Google OAuth" })
+  @ApiResponse({ status: HttpStatus.FOUND, description: "Redirection vers Google" })
+  @Get("google/login")
+  @Redirect()
+  async googleLogin() {
+    this.logger.log("Initiating Google OAuth login");
+    const url = await this.oauthService.getGoogleAuthUrl();
+    return { url };
+  }
+
+  @ApiOperation({ summary: "Callback Google OAuth" })
+  @ApiQuery({ name: "code", required: true, type: String })
+  @ApiQuery({ name: "state", required: false, type: String })
+  @ApiResponse({ status: HttpStatus.OK, description: "Authentification réussie" })
+  @Get("google/callback")
+  @Redirect()
+  async googleCallback(
+    @Query("code") code: string,
+    @Query("state") state: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.logger.log(`Google OAuth callback received with code`);
+    const authResult = await this.oauthService.handleGoogleOAuthCallback(code, state);
+
+    const frontendUrl = this.oauthService.getFrontendRedirectUrl();
+
+    // Configure a secure cookie with the JWT token
+    const cookieOptions = {
+      httpOnly: true, // Prevent JavaScript on the client from accessing the cookie
+      secure: process.env.NODE_ENV === "production", // Cookies sent only via HTTPS in production
+      sameSite: "lax" as const, // Protection against CSRF while allowing redirects
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours (in milliseconds)
+      path: "/", // Cookie available for the whole site
+    };
+
+    // Define the cookie with the JWT token
+    response.cookie("auth_token", authResult.access_token, cookieOptions);
+
+    // Store the basic user information in a non-HttpOnly cookie so the frontend can access it
+    response.cookie("user_info", JSON.stringify({
+      id: authResult.user.id,
+      email: authResult.user.email,
+      firstName: authResult.user.firstName,
+      lastName: authResult.user.lastName,
+      role: authResult.user.role,
+    }), {
+      ...cookieOptions,
+      httpOnly: false, // The frontend must be able to read these information
+    });
+
+    // Redirect to the frontend without exposing the token in the URL
+    return {
+      url: frontendUrl,
+      statusCode: HttpStatus.FOUND,
+    };
+  }
+
+  @ApiOperation({ summary: "Connexion via Google OAuth (méthode alternative)" })
   @ApiBody({ type: GoogleOAuthLoginDto })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -40,8 +98,8 @@ export class OAuthController {
   @Post("google")
   @HttpCode(HttpStatus.OK)
   async googleAuth(@Body() googleAuthData: GoogleOAuthLoginDto) {
-    this.logger.log(`Google OAuth login attempt for: ${googleAuthData.email}`);
-    return this.oauthService.handleOAuthCallback("google", googleAuthData);
+    this.logger.log(`Manual Google OAuth login attempt for: ${googleAuthData.email}`);
+    return this.oauthService.handleManualGoogleAuth(googleAuthData);
   }
 
   @ApiOperation({ summary: "Connexion via Facebook OAuth" })

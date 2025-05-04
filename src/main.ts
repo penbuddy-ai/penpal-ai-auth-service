@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import * as cookieParser from "cookie-parser";
 
 import { AppModule } from "./app.module";
 
@@ -9,6 +10,9 @@ async function bootstrap() {
   const logger = new Logger("Auth Service");
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Utiliser cookie-parser pour traiter les cookies
+  app.use(cookieParser());
 
   // Set global prefix for all routes
   app.setGlobalPrefix("api/v1");
