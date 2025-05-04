@@ -58,6 +58,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Identifiants invalides" })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Invalid request" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("login")
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -112,6 +116,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: "Données invalides" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
@@ -128,6 +136,10 @@ export class AuthController {
 
   @ApiOperation({ summary: "Déconnexion" })
   @ApiResponse({ status: HttpStatus.OK, description: "Déconnexion réussie" })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: "Unauthorized" })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: "Access denied" })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("logout")
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) response: Response) {
