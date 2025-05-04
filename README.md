@@ -1,6 +1,15 @@
-# Penpal AI - Authentication Microservice
+# Penpal AI - Authentication Service
 
-This is the authentication microservice for the Penpal AI application. It is responsible for user management, authentication (email/password and OAuth), and session management.
+This microservice handles authentication and user management for the Penpal AI application.
+
+## Architecture
+
+This service follows a microservice architecture pattern where:
+
+- **Auth Service** (this service): Manages authentication, user registration, and OAuth integrations
+- **DB Service** (separate): Handles all database operations and is the only service with direct database access
+
+The Auth Service communicates with the DB Service via HTTP requests, maintaining a clear separation of concerns.
 
 ## Features
 
@@ -20,58 +29,59 @@ This is the authentication microservice for the Penpal AI application. It is res
 - [JWT](https://jwt.io/) - JSON Web Tokens for secure authentication
 - [Argon2](https://github.com/ranisalt/node-argon2) - Password hashing
 
-## Requirements
+## Environment Variables
 
-- Node.js (>= 18.x)
-- MongoDB (>= 5.0)
-
-## Installation
+Copy the `.env.example` file to a new file named `.env`:
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-organization/penpal-ai-auth-service.git
-cd penpal-ai-auth-service
-
-# Install dependencies
-npm install
-
-# Set up environment variables
 cp .env.example .env
-# Edit the .env file with your configuration
 ```
 
-## Running the application
+Then update the values in the `.env` file:
 
-```bash
-# Development mode
-npm run start:dev
+```
+# Server Configuration
+PORT=3000
+NODE_ENV=development
 
-# Production mode
-npm run build
-npm run start:prod
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRES_IN=1d
+
+# DB Service Configuration
+DB_SERVICE_URL=http://localhost:3001
+DB_SERVICE_API_KEY=your_api_key_here
+
+# OAuth Configuration
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 ```
 
-## API Endpoints
+## Requirements
 
 The service exposes the following endpoints:
 
 ### Authentication
 
-- `POST /api/v1/auth/register` - Register a new user
-- `POST /api/v1/auth/login` - Authenticate a user and get tokens
-- `POST /api/v1/auth/refresh` - Refresh authentication token
-- `POST /api/v1/auth/logout` - Logout and invalidate tokens
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login a user
+- `GET /auth/google` - Initiate Google OAuth login
+- `GET /auth/google/callback` - Google OAuth callback
+
+### Protected Routes
+
+All protected routes require a valid JWT token in the Authorization header:
+
+```
+Authorization: Bearer YOUR_JWT_TOKEN
+```
 
 ### User Management
 
 - `GET /api/v1/users/me` - Get current user profile
 - `PUT /api/v1/users/me` - Update current user profile
 - `PUT /api/v1/users/me/password` - Change password
-
-### OAuth
-
-- `GET /api/v1/auth/google` - Initiate Google OAuth flow
-- `GET /api/v1/auth/google/callback` - Google OAuth callback
 
 ### Health Check
 
@@ -88,6 +98,25 @@ npm run test:e2e
 
 # Test coverage
 npm run test:cov
+```
+
+## Installation
+
+```bash
+npm install
+```
+
+## Running the app
+
+```bash
+# development
+npm run start
+
+# watch mode
+npm run start:dev
+
+# production mode
+npm run start:prod
 ```
 
 ## License
