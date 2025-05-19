@@ -18,6 +18,6 @@ import { UsersService } from "./services/users.service";
   ],
   controllers: [UsersController],
   providers: [UsersService, DbServiceClient],
-  exports: [UsersService],
+  exports: [UsersService, DbServiceClient],
 })
 export class UsersModule {}

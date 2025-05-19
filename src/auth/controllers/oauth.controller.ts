@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Redir
 import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 
+import { DbServiceClient } from "../../users/services/db-service.client";
 import { AppleOAuthLoginDto, FacebookOAuthLoginDto, GithubOAuthLoginDto, GoogleOAuthLoginDto } from "../dto/oauth-login.dto";
 import { OAuthService } from "../services/oauth.service";
 
@@ -10,7 +11,10 @@ import { OAuthService } from "../services/oauth.service";
 export class OAuthController {
   private readonly logger = new Logger(OAuthController.name);
 
-  constructor(private readonly oauthService: OAuthService) {}
+  constructor(
+    private readonly oauthService: OAuthService,
+    private readonly dbServiceClient: DbServiceClient,
+  ) {}
 
   @ApiOperation({ summary: "Initier l'authentification Google OAuth" })
   @ApiResponse({ status: HttpStatus.FOUND, description: "Redirection vers Google" })
@@ -41,7 +45,9 @@ export class OAuthController {
     this.logger.log(`Google OAuth callback received with code`);
     const authResult = await this.oauthService.handleGoogleOAuthCallback(code, state);
 
-    const frontendUrl = this.oauthService.getFrontendRedirectUrl();
+    const user = await this.dbServiceClient.findUserByEmail(authResult.user.email);
+
+    const frontendUrl = `${this.oauthService.getFrontendRedirectUrl()}/auth/callback`;
 
     // Configure a secure cookie with the JWT token
     const cookieOptions = {
@@ -56,13 +62,7 @@ export class OAuthController {
     response.cookie("auth_token", authResult.access_token, cookieOptions);
 
     // Store the basic user information in a non-HttpOnly cookie so the frontend can access it
-    response.cookie("user_info", JSON.stringify({
-      id: authResult.user.id,
-      email: authResult.user.email,
-      firstName: authResult.user.firstName,
-      lastName: authResult.user.lastName,
-      role: authResult.user.role,
-    }), {
+    response.cookie("user_info", user, {
       ...cookieOptions,
       httpOnly: false, // The frontend must be able to read these information
     });
