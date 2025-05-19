@@ -61,15 +61,12 @@ export class OAuthController {
     // Define the cookie with the JWT token
     response.cookie("auth_token", authResult.access_token, cookieOptions);
 
-    // Store the basic user information in a non-HttpOnly cookie so the frontend can access it
-    response.cookie("user_info", user, {
-      ...cookieOptions,
-      httpOnly: false, // The frontend must be able to read these information
-    });
+    // Encode user data for the URL - the frontend will parse this on callback
+    const userDataParam = encodeURIComponent(JSON.stringify(user));
 
-    // Redirect to the frontend without exposing the token in the URL
+    // Redirect to the frontend with user data as a query parameter
     return {
-      url: frontendUrl,
+      url: `${frontendUrl}?userData=${userDataParam}`,
       statusCode: HttpStatus.FOUND,
     };
   }

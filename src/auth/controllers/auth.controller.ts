@@ -81,19 +81,7 @@ export class AuthController {
     // Définir le cookie avec le token JWT
     response.cookie("auth_token", authResult.access_token, cookieOptions);
 
-    // Stocker les informations utilisateur de base dans un cookie non-HttpOnly
-    response.cookie("user_info", JSON.stringify({
-      id: authResult.user.id,
-      email: authResult.user.email,
-      firstName: authResult.user.firstName,
-      lastName: authResult.user.lastName,
-      role: authResult.user.role,
-    }), {
-      ...cookieOptions,
-      httpOnly: false, // Le frontend doit pouvoir lire ces informations
-    });
-
-    // Retourner également le résultat d'authentification pour la compatibilité API
+    // Return the authentication result for API compatibility
     return authResult;
   }
 
@@ -147,7 +135,6 @@ export class AuthController {
 
     // Effacer les cookies d'authentification
     response.clearCookie("auth_token");
-    response.clearCookie("user_info");
 
     return { message: "Logout successful" };
   }
