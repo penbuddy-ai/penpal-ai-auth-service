@@ -8,6 +8,7 @@ import { AuthController } from "./controllers/auth.controller";
 import { OAuthController } from "./controllers/oauth.controller";
 import { AuthService } from "./services/auth.service";
 import { OAuthService } from "./services/oauth.service";
+import { SecurityService } from "./services/security.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
 
@@ -28,7 +29,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
     }),
   ],
   controllers: [AuthController, OAuthController],
-  providers: [AuthService, OAuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, OAuthService, SecurityService, LocalStrategy, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -15,7 +15,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<Omit<User, "password"> | null> {
     try {
-      const user = await this.usersService.validateUserCredentials(email, password);
+      const user: Omit<User, "password"> | null = await this.usersService.validateUserCredentials(email, password);
       if (!user) {
         return null;
       }
@@ -29,7 +29,7 @@ export class AuthService {
 
   async login(user: Omit<User, "password">) {
     const payload = {
-      sub: user.id,
+      sub: user._id,
       email: user.email,
       roles: [user.role],
     };
@@ -39,7 +39,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,

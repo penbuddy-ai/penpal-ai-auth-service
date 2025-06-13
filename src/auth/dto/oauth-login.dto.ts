@@ -1,60 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
-export class GoogleOAuthLoginDto {
-  @ApiProperty({
-    description: "ID Google de l'utilisateur",
-    example: "123456789012345678901",
-  })
-  @IsString()
-  @IsNotEmpty()
-  id: string;
-
-  @ApiProperty({
-    description: "Email de l'utilisateur",
-    example: "john.doe@gmail.com",
-  })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @ApiProperty({
-    description: "Prénom de l'utilisateur",
-    example: "John",
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  firstName?: string;
-
-  @ApiProperty({
-    description: "Nom de famille de l'utilisateur",
-    example: "Doe",
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  lastName?: string;
-
-  @ApiProperty({
-    description: "Nom complet de l'utilisateur",
-    example: "John Doe",
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  displayName?: string;
-
-  @ApiProperty({
-    description: "URL de la photo de profil",
-    example: "https://lh3.googleusercontent.com/a/photo.jpg",
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  picture?: string;
-}
-
 export class FacebookOAuthLoginDto {
   @ApiProperty({
     description: "ID Facebook de l'utilisateur",

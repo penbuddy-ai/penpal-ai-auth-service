@@ -163,6 +163,54 @@ export class DbServiceClient {
     }
   }
 
+  async updateUserProfile(userId: string, updateData: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }): Promise<User> {
+    const url = `${this.dbServiceUrl}/users/${userId}/profile`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.patch(url, updateData, {
+          headers: this.getServiceHeaders(),
+        }).pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(`Error updating user profile: ${error.message}`, error.stack);
+            throw error;
+          }),
+        ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(`Failed to update user profile: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+    const url = `${this.dbServiceUrl}/users/${userId}/password`;
+
+    try {
+      await firstValueFrom(
+        this.httpService.patch(url, { password: hashedPassword }, {
+          headers: this.getServiceHeaders(),
+        }).pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(`Error updating user password: ${error.message}`, error.stack);
+            throw error;
+          }),
+        ),
+      );
+    }
+    catch (error) {
+      this.logger.error(`Failed to update user password: ${error.message}`);
+      throw error;
+    }
+  }
+
   private getServiceHeaders() {
     return {
       "x-api-key": this.apiKey,

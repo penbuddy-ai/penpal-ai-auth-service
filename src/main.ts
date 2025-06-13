@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 
 import { AppModule } from "./app.module";
+import { HttpLoggingInterceptor } from "./common/interceptors/http-logging.interceptor";
 
 async function bootstrap() {
   const logger = new Logger("Auth Service");
@@ -23,6 +24,12 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
+
+  // Enable HTTP logging interceptor (only in development)
+  if (process.env.NODE_ENV !== "production") {
+    app.useGlobalInterceptors(new HttpLoggingInterceptor());
+    logger.log("🔍 HTTP request/response logging enabled (development mode)");
+  }
 
   // Configure CORS
   const corsOrigins = configService.get<string>("CORS_ALLOWED_ORIGINS")?.split(",") || [];

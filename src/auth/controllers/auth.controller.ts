@@ -1,10 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post, Request, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Req, Request, Res, UseGuards } from "@nestjs/common";
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Response } from "express";
+import { Request as ExpressRequest, Response } from "express";
 
 import { UsersService } from "../../users/services/users.service";
 import { RegisterDto } from "../dto/register.dto";
 import { AuthService } from "../services/auth.service";
+import { SecurityService } from "../services/security.service";
 import { LocalAuthGuard } from "../strategies/local-auth.guard";
 
 @ApiTags("auth")
@@ -15,6 +16,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly securityService: SecurityService,
   ) {}
 
   @ApiOperation({ summary: "Connexion utilisateur" })
@@ -65,24 +67,59 @@ export class AuthController {
   @Post("login")
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req, @Res({ passthrough: true }) response: Response) {
-    this.logger.log(`Login attempt for user: ${req.user.email}`);
-    const authResult = await this.authService.login(req.user);
+  async login(@Request() req, @Res({ passthrough: true }) response: Response, @Req() request: ExpressRequest) {
+    const ip = this.getClientIP(request);
+    const userAgent = request.headers["user-agent"] || "unknown";
 
-    // Configuration d'un cookie sécurisé avec le token JWT
-    const cookieOptions = {
-      httpOnly: true, // Empêche JavaScript côté client d'accéder au cookie
-      secure: process.env.NODE_ENV === "production", // Cookies envoyés uniquement via HTTPS en production
-      sameSite: "lax" as const, // Protection contre CSRF tout en permettant les redirections
-      maxAge: 24 * 60 * 60 * 1000, // 24 heures (en millisecondes)
-      path: "/", // Cookie disponible pour tout le site
-    };
+    this.logger.log(`🔐 Login attempt from ${ip} for user: ${req.user.email}`);
 
-    // Définir le cookie avec le token JWT
-    response.cookie("auth_token", authResult.access_token, cookieOptions);
+    try {
+      // Apply security checks - rate limiting and suspicious activity detection
+      this.securityService.checkRateLimit(ip, userAgent);
 
-    // Return the authentication result for API compatibility
-    return authResult;
+      // Validate request parameters for security
+      if (!req.user || !req.user.email) {
+        this.logger.error(`❌ Invalid user data in request from ${ip}`);
+        this.securityService.logFailedAuth(ip, userAgent, "Invalid user data");
+        throw new BadRequestException("Invalid authentication data");
+      }
+
+      // Generate authentication result
+      const authResult = await this.authService.login(req.user);
+
+      // Enhanced secure cookie configuration (same as OAuth)
+      const cookieOptions = {
+        httpOnly: true, // Prevents client-side JavaScript access
+        secure: process.env.NODE_ENV === "production", // HTTPS only in production
+        sameSite: "strict" as const, // Strict CSRF protection (upgraded from 'lax')
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        path: "/", // Available site-wide
+        domain: process.env.NODE_ENV === "production" ? this.getDomainFromUrl(process.env.FRONTEND_URL || "http://localhost:3000") : undefined,
+      };
+
+      this.logger.log(`🍪 Setting secure auth cookie for ${req.user.email} with options:`, {
+        httpOnly: cookieOptions.httpOnly,
+        secure: cookieOptions.secure,
+        sameSite: cookieOptions.sameSite,
+        domain: cookieOptions.domain,
+      });
+
+      // Set secure authentication cookie
+      response.cookie("auth_token", authResult.access_token, cookieOptions);
+
+      // Log successful authentication
+      this.logger.log(`✅ Successful login for user: ${req.user.email} from ${ip}`);
+      this.securityService.logSuccessfulAuth(ip, userAgent, req.user.email);
+
+      // Return authentication result
+      return authResult;
+    }
+    catch (error) {
+      // Log failed authentication attempt
+      this.logger.error(`❌ Login failed for user ${req.user?.email || "unknown"} from ${ip}: ${error.message}`);
+      this.securityService.logFailedAuth(ip, userAgent, `Login failed: ${error.message}`);
+      throw error;
+    }
   }
 
   @ApiOperation({ summary: "Inscription utilisateur" })
@@ -110,16 +147,43 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
-    this.logger.log(`Registration attempt for user: ${registerDto.email}`);
-    const user = await this.usersService.createUser({
-      ...registerDto,
-    });
+  async register(@Body() registerDto: RegisterDto, @Req() request: ExpressRequest) {
+    const ip = this.getClientIP(request);
+    const userAgent = request.headers["user-agent"] || "unknown";
 
-    // Remove password from response
-    const { password, ...result } = user;
+    this.logger.log(`📝 Registration attempt from ${ip} for user: ${registerDto.email}`);
 
-    return result;
+    try {
+      // Apply security checks for registration
+      this.securityService.checkRateLimit(ip, userAgent);
+
+      // Validate registration data
+      if (!registerDto.email || !registerDto.password || !registerDto.firstName || !registerDto.lastName) {
+        this.logger.error(`❌ Invalid registration data from ${ip}`);
+        this.securityService.logFailedAuth(ip, userAgent, "Invalid registration data");
+        throw new BadRequestException("All required fields must be provided");
+      }
+
+      // Create user
+      const user = await this.usersService.createUser({
+        ...registerDto,
+      });
+
+      // Remove password from response
+      const { password, ...result } = user;
+
+      // Log successful registration
+      this.logger.log(`✅ Successful registration for user: ${registerDto.email} from ${ip}`);
+      this.securityService.logSuccessfulAuth(ip, userAgent, `Registration: ${registerDto.email}`);
+
+      return result;
+    }
+    catch (error) {
+      // Log failed registration attempt
+      this.logger.error(`❌ Registration failed for ${registerDto.email} from ${ip}: ${error.message}`);
+      this.securityService.logFailedAuth(ip, userAgent, `Registration failed: ${error.message}`);
+      throw error;
+    }
   }
 
   @ApiOperation({ summary: "Déconnexion" })
@@ -130,12 +194,100 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "User not found" })
   @Post("logout")
   @HttpCode(HttpStatus.OK)
-  async logout(@Res({ passthrough: true }) response: Response) {
-    this.logger.log("Logout endpoint called");
+  async logout(@Res({ passthrough: true }) response: Response, @Req() request: ExpressRequest) {
+    const ip = this.getClientIP(request);
 
-    // Effacer les cookies d'authentification
-    response.clearCookie("auth_token");
+    this.logger.log(`🚪 Logout request from ${ip}`);
 
-    return { message: "Logout successful" };
+    try {
+      // Enhanced cookie clearing (same as OAuth)
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict" as const,
+        path: "/",
+        domain: process.env.NODE_ENV === "production" ? this.getDomainFromUrl(process.env.FRONTEND_URL || "http://localhost:3000") : undefined,
+      };
+
+      // Clear authentication cookie with same options used to set it
+      response.clearCookie("auth_token", cookieOptions);
+
+      this.logger.log(`✅ Logout successful from ${ip}`);
+      return { message: "Logout successful" };
+    }
+    catch (error) {
+      this.logger.error(`❌ Logout error from ${ip}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @ApiOperation({ summary: "Get authentication security statistics" })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Security statistics retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        totalEvents: { type: "number" },
+        suspiciousIPs: { type: "number" },
+        rateLimitedIPs: { type: "number" },
+        recentEvents: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              ip: { type: "string" },
+              userAgent: { type: "string" },
+              timestamp: { type: "number" },
+              event: { type: "string" },
+              details: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.INTERNAL_SERVER_ERROR, description: "Internal server error" })
+  @Get("security/stats")
+  @HttpCode(HttpStatus.OK)
+  async getSecurityStats(@Req() request: ExpressRequest) {
+    const ip = this.getClientIP(request);
+    this.logger.log(`📊 Security stats request from ${ip}`);
+
+    const stats = this.securityService.getSecurityStats();
+    this.logger.log(`📈 Security stats retrieved: ${stats.totalEvents} events, ${stats.suspiciousIPs} suspicious IPs`);
+
+    return stats;
+  }
+
+  /**
+   * Extract client IP address from request (same logic as OAuth controller)
+   */
+  private getClientIP(request: ExpressRequest): string {
+    const xForwardedFor = request.headers["x-forwarded-for"];
+    const xRealIp = request.headers["x-real-ip"];
+
+    if (typeof xForwardedFor === "string") {
+      return xForwardedFor.split(",")[0].trim();
+    }
+
+    if (typeof xRealIp === "string") {
+      return xRealIp.trim();
+    }
+
+    return request.socket.remoteAddress || "unknown";
+  }
+
+  /**
+   * Extract domain from URL for cookie configuration (same logic as OAuth controller)
+   */
+  private getDomainFromUrl(url: string): string | undefined {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname;
+    }
+    catch {
+      return undefined;
+    }
   }
 }
