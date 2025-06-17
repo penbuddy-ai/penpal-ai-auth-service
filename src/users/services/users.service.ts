@@ -32,9 +32,15 @@ export class UsersService {
     }
   }
 
-  async findByOAuth(provider: string, providerId: string): Promise<User | null> {
+  async findByOAuth(
+    provider: string,
+    providerId: string,
+  ): Promise<User | null> {
     try {
-      const user = await this.dbServiceClient.findUserByOAuth(provider, providerId);
+      const user = await this.dbServiceClient.findUserByOAuth(
+        provider,
+        providerId,
+      );
       return user;
     }
     catch (error) {
@@ -43,7 +49,10 @@ export class UsersService {
     }
   }
 
-  async validateUserCredentials(email: string, password: string): Promise<Omit<User, "password"> | null> {
+  async validateUserCredentials(
+    email: string,
+    password: string,
+  ): Promise<Omit<User, "password"> | null> {
     try {
       const user = await this.findByEmail(email);
 
@@ -57,7 +66,9 @@ export class UsersService {
         passwordMatches = await argon2.verify(user.password, password);
       }
       catch (error) {
-        this.logger.warn(`Error verifying password with argon2: ${error.message}`);
+        this.logger.warn(
+          `Error verifying password with argon2: ${error.message}`,
+        );
         // Don't fallback to direct comparison as it will never match
         // (hash vs plain text)
         return null;
@@ -102,7 +113,8 @@ export class UsersService {
 
   async createOrUpdateOAuthUser(oauthUserData: any): Promise<User> {
     try {
-      const user = await this.dbServiceClient.createOrUpdateOAuthUser(oauthUserData);
+      const user
+        = await this.dbServiceClient.createOrUpdateOAuthUser(oauthUserData);
       return user;
     }
     catch (error) {
@@ -111,11 +123,14 @@ export class UsersService {
     }
   }
 
-  async updateProfile(userId: string, updateData: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  }): Promise<User | null> {
+  async updateProfile(
+    userId: string,
+    updateData: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    },
+  ): Promise<User | null> {
     try {
       // Find the user first to make sure they exist
       const existingUser = await this.findById(userId);
@@ -124,7 +139,10 @@ export class UsersService {
       }
 
       // Update user profile through db service
-      const updatedUser = await this.dbServiceClient.updateUserProfile(userId, updateData);
+      const updatedUser = await this.dbServiceClient.updateUserProfile(
+        userId,
+        updateData,
+      );
       return updatedUser;
     }
     catch (error) {
@@ -133,7 +151,11 @@ export class UsersService {
     }
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     try {
       // Find the user and verify current password
       const user = await this.findById(userId);
@@ -147,7 +169,9 @@ export class UsersService {
         passwordMatches = await argon2.verify(user.password, currentPassword);
       }
       catch (error) {
-        this.logger.warn(`Error verifying current password with argon2: ${error.message}`);
+        this.logger.warn(
+          `Error verifying current password with argon2: ${error.message}`,
+        );
         // Don't fallback to direct comparison as it will never match
         // (hash vs plain text)
         throw new UnauthorizedException("Error verifying current password");
@@ -167,6 +191,67 @@ export class UsersService {
     }
     catch (error) {
       this.logger.error(`Error changing password: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Onboarding methods
+  async saveOnboardingProgress(
+    userId: string,
+    progressData: any,
+  ): Promise<any> {
+    try {
+      // Find the user first to make sure they exist
+      const existingUser = await this.findById(userId);
+      if (!existingUser) {
+        throw new Error("User not found");
+      }
+
+      // Forward to db service
+      return await this.dbServiceClient.saveOnboardingProgress(
+        userId,
+        progressData,
+      );
+    }
+    catch (error) {
+      this.logger.error(`Error saving onboarding progress: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async completeOnboarding(userId: string, onboardingData: any): Promise<any> {
+    try {
+      // Find the user first to make sure they exist
+      const existingUser = await this.findById(userId);
+      if (!existingUser) {
+        throw new Error("User not found");
+      }
+
+      // Forward to db service
+      return await this.dbServiceClient.completeOnboarding(
+        userId,
+        onboardingData,
+      );
+    }
+    catch (error) {
+      this.logger.error(`Error completing onboarding: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getOnboardingStatus(userId: string): Promise<any> {
+    try {
+      // Find the user first to make sure they exist
+      const existingUser = await this.findById(userId);
+      if (!existingUser) {
+        throw new Error("User not found");
+      }
+
+      // Forward to db service
+      return await this.dbServiceClient.getOnboardingStatus(userId);
+    }
+    catch (error) {
+      this.logger.error(`Error getting onboarding status: ${error.message}`);
       throw error;
     }
   }

@@ -1,19 +1,94 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Param, Put, Request, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Param,
+  Patch,
+  Put,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import {
+  IsArray,
+  IsBoolean,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+} from "class-validator";
 
 import { JwtAuthGuard } from "../../auth/strategies/jwt-auth.guard";
 import { UsersService } from "../services/users.service";
 
 // DTOs for request/response validation
 export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
   firstName?: string;
+
+  @IsOptional()
+  @IsString()
   lastName?: string;
+
+  @IsOptional()
+  @IsString()
   email?: string;
 }
 
 export class ChangePasswordDto {
+  @IsString()
   currentPassword: string;
+
+  @IsString()
   newPassword: string;
+}
+
+export class OnboardingDto {
+  @IsString()
+  preferredName: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  learningLanguages: string[];
+
+  @IsObject()
+  proficiencyLevels: Record<string, string>;
+
+  @IsBoolean()
+  onboardingCompleted: boolean;
+}
+
+export class OnboardingProgressDto {
+  @IsOptional()
+  @IsString()
+  preferredName?: string;
+
+  @IsOptional()
+  @IsString()
+  learningLanguage?: string;
+
+  @IsOptional()
+  @IsString()
+  proficiencyLevel?: string;
+
+  @IsOptional()
+  @IsNumber()
+  currentStep?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  completedSteps?: string[];
 }
 
 @ApiTags("users")
@@ -37,6 +112,12 @@ export class UsersController {
         isEmailVerified: { type: "boolean" },
         provider: { type: "string" },
         role: { type: "string" },
+        subscriptionPlan: { type: "string", enum: ["monthly", "yearly"] },
+        subscriptionStatus: {
+          type: "string",
+          enum: ["trial", "active", "past_due", "canceled", "unpaid"],
+        },
+        subscriptionTrialEnd: { type: "string", format: "date-time" },
       },
     },
   })
@@ -54,9 +135,12 @@ export class UsersController {
       return { message: "User not found" };
     }
 
-    // Do not return the password
-    const { password, ...result } = user;
-    return result;
+    // Do not return the password and convert _id to id for frontend consistency
+    const { password, _id, ...userWithoutPassword } = user;
+    return {
+      id: _id, // Convert _id to id for frontend consistency
+      ...userWithoutPassword,
+    };
   }
 
   @ApiOperation({ summary: "Update current user profile" })
@@ -84,16 +168,25 @@ export class UsersController {
   @ApiBearerAuth("JWT-auth")
   @Put("me")
   @UseGuards(JwtAuthGuard)
-  async updateCurrentUser(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+  async updateCurrentUser(
+    @Request() req,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
     this.logger.log(`Updating profile for user ID: ${req.user.id}`);
-    const updatedUser = await this.usersService.updateProfile(req.user.id, updateProfileDto);
+    const updatedUser = await this.usersService.updateProfile(
+      req.user.id,
+      updateProfileDto,
+    );
     if (!updatedUser) {
       return { message: "User not found" };
     }
 
-    // Do not return the password
-    const { password, ...result } = updatedUser;
-    return result;
+    // Do not return the password and convert _id to id for frontend consistency
+    const { password, _id, ...userWithoutPassword } = updatedUser;
+    return {
+      id: _id, // Convert _id to id for frontend consistency
+      ...userWithoutPassword,
+    };
   }
 
   @ApiOperation({ summary: "Change current user password" })
@@ -108,7 +201,10 @@ export class UsersController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: "Unauthorized or invalid current password" })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized or invalid current password",
+  })
   @ApiResponse({ status: 404, description: "User not found" })
   @ApiResponse({ status: 400, description: "Invalid request data" })
   @ApiResponse({ status: 500, description: "Internal server error" })
@@ -116,9 +212,16 @@ export class UsersController {
   @Put("me/password")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async changePassword(@Request() req, @Body() changePasswordDto: ChangePasswordDto) {
+  async changePassword(
+    @Request() req,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
     this.logger.log(`Changing password for user ID: ${req.user.id}`);
-    await this.usersService.changePassword(req.user.id, changePasswordDto.currentPassword, changePasswordDto.newPassword);
+    await this.usersService.changePassword(
+      req.user.id,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
+    );
     return { message: "Password changed successfully" };
   }
 
@@ -154,8 +257,74 @@ export class UsersController {
       return { message: "User not found" };
     }
 
-    // Do not return the password
-    const { password, ...result } = user;
-    return result;
+    // Do not return the password and convert _id to id for frontend consistency
+    const { password, _id, ...userWithoutPassword } = user;
+    return {
+      id: _id, // Convert _id to id for frontend consistency
+      ...userWithoutPassword,
+    };
+  }
+
+  // Onboarding endpoints
+  @ApiOperation({ summary: "Save user onboarding progress" })
+  @ApiBody({ type: OnboardingProgressDto })
+  @ApiResponse({
+    status: 200,
+    description: "Onboarding progress saved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 400, description: "Invalid request data" })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  @ApiBearerAuth("JWT-auth")
+  @Patch("me/onboarding/progress")
+  @UseGuards(JwtAuthGuard)
+  async saveOnboardingProgress(
+    @Request() req,
+    @Body() progressDto: OnboardingProgressDto,
+  ) {
+    this.logger.log(`Saving onboarding progress for user: ${req.user.id}`);
+    return this.usersService.saveOnboardingProgress(req.user.id, progressDto);
+  }
+
+  @ApiOperation({ summary: "Complete user onboarding" })
+  @ApiBody({ type: OnboardingDto })
+  @ApiResponse({
+    status: 200,
+    description: "Onboarding completed successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 400, description: "Invalid request data" })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  @ApiBearerAuth("JWT-auth")
+  @Patch("me/onboarding/complete")
+  @UseGuards(JwtAuthGuard)
+  async completeOnboarding(
+    @Request() req,
+    @Body() onboardingDto: OnboardingDto,
+  ) {
+    this.logger.log(`Completing onboarding for user: ${req.user.id}`);
+    return this.usersService.completeOnboarding(req.user.id, onboardingDto);
+  }
+
+  @ApiOperation({ summary: "Check user onboarding status" })
+  @ApiResponse({
+    status: 200,
+    description: "Onboarding status retrieved",
+    schema: {
+      type: "object",
+      properties: {
+        needsOnboarding: { type: "boolean" },
+        currentStep: { type: "string", nullable: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  @ApiBearerAuth("JWT-auth")
+  @Get("me/onboarding/status")
+  @UseGuards(JwtAuthGuard)
+  async getOnboardingStatus(@Request() req) {
+    this.logger.log(`Checking onboarding status for user: ${req.user.id}`);
+    return this.usersService.getOnboardingStatus(req.user.id);
   }
 }

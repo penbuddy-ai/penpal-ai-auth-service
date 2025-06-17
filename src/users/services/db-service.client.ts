@@ -17,11 +17,15 @@ export class DbServiceClient {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.dbServiceUrl = this.configService.get<string>("DB_SERVICE_URL") || "http://localhost:3001";
+    this.dbServiceUrl
+      = this.configService.get<string>("DB_SERVICE_URL")
+        || "http://localhost:3001";
     this.apiKey = this.configService.get<string>("DB_SERVICE_API_KEY") || "";
 
     if (!this.apiKey) {
-      this.logger.warn("DB_SERVICE_API_KEY not set! Inter-service authentication will fail.");
+      this.logger.warn(
+        "DB_SERVICE_API_KEY not set! Inter-service authentication will fail.",
+      );
     }
   }
 
@@ -30,14 +34,19 @@ export class DbServiceClient {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post(url, oauthUserData, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Error creating/updating OAuth user: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .post(url, oauthUserData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error creating/updating OAuth user: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -53,17 +62,22 @@ export class DbServiceClient {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get(url, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            if (error.response?.status === 404) {
-              return [];
-            }
-            this.logger.error(`Error finding user by ID: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              if (error.response?.status === 404) {
+                return [];
+              }
+              this.logger.error(
+                `Error finding user by ID: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -77,22 +91,30 @@ export class DbServiceClient {
     }
   }
 
-  async findUserByOAuth(provider: string, providerId: string): Promise<User | null> {
+  async findUserByOAuth(
+    provider: string,
+    providerId: string,
+  ): Promise<User | null> {
     const url = `${this.dbServiceUrl}/users/oauth/${provider}/${providerId}`;
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get(url, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            if (error.response?.status === 404) {
-              return [];
-            }
-            this.logger.error(`Error finding user by OAuth: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              if (error.response?.status === 404) {
+                return [];
+              }
+              this.logger.error(
+                `Error finding user by OAuth: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -111,17 +133,22 @@ export class DbServiceClient {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get(url, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            if (error.response?.status === 404) {
-              return [];
-            }
-            this.logger.error(`Error finding user by email: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              if (error.response?.status === 404) {
+                return [];
+              }
+              this.logger.error(
+                `Error finding user by email: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -145,14 +172,19 @@ export class DbServiceClient {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post(url, userData, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Error creating user: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .post(url, userData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error creating user: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -163,23 +195,31 @@ export class DbServiceClient {
     }
   }
 
-  async updateUserProfile(userId: string, updateData: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  }): Promise<User> {
+  async updateUserProfile(
+    userId: string,
+    updateData: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    },
+  ): Promise<User> {
     const url = `${this.dbServiceUrl}/users/${userId}/profile`;
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.patch(url, updateData, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Error updating user profile: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .patch(url, updateData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error updating user profile: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
 
       return data;
@@ -190,24 +230,179 @@ export class DbServiceClient {
     }
   }
 
-  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+  async updateUserPassword(
+    userId: string,
+    hashedPassword: string,
+  ): Promise<void> {
     const url = `${this.dbServiceUrl}/users/${userId}/password`;
 
     try {
       await firstValueFrom(
-        this.httpService.patch(url, { password: hashedPassword }, {
-          headers: this.getServiceHeaders(),
-        }).pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(`Error updating user password: ${error.message}`, error.stack);
-            throw error;
-          }),
-        ),
+        this.httpService
+          .patch(
+            url,
+            { password: hashedPassword },
+            {
+              headers: this.getServiceHeaders(),
+            },
+          )
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error updating user password: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
       );
     }
     catch (error) {
       this.logger.error(`Failed to update user password: ${error.message}`);
       throw error;
+    }
+  }
+
+  // Onboarding methods
+  async saveOnboardingProgress(
+    userId: string,
+    progressData: any,
+  ): Promise<any> {
+    const url = `${this.dbServiceUrl}/users/${userId}/onboarding/progress`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .patch(url, progressData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error saving onboarding progress: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(`Failed to save onboarding progress: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async completeOnboarding(userId: string, onboardingData: any): Promise<any> {
+    const url = `${this.dbServiceUrl}/users/${userId}/onboarding/complete`;
+
+    try {
+      // Convert language codes to ObjectIds
+      const processedData = await this.processOnboardingData(onboardingData);
+
+      const { data } = await firstValueFrom(
+        this.httpService
+          .patch(url, processedData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error completing onboarding: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(`Failed to complete onboarding: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getOnboardingStatus(userId: string): Promise<any> {
+    const url = `${this.dbServiceUrl}/users/${userId}/onboarding/status`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error getting onboarding status: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(`Failed to get onboarding status: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert language codes to ObjectIds by fetching from languages API
+   */
+  private async processOnboardingData(onboardingData: any): Promise<any> {
+    if (
+      !onboardingData.learningLanguages
+      || !Array.isArray(onboardingData.learningLanguages)
+    ) {
+      return onboardingData;
+    }
+
+    try {
+      // Fetch all languages from DB service
+      const { data: languages } = await firstValueFrom(
+        this.httpService
+          .get(`${this.dbServiceUrl}/languages`, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error fetching languages: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      // Create a map of language codes to ObjectIds
+      const languageMap = new Map();
+      languages.forEach((lang: any) => {
+        languageMap.set(lang.code, lang._id);
+      });
+
+      // Convert language codes to ObjectIds
+      const learningLanguageIds = onboardingData.learningLanguages
+        .map((code: string) => languageMap.get(code))
+        .filter((id: any) => id !== undefined);
+
+      return {
+        ...onboardingData,
+        learningLanguages: learningLanguageIds,
+      };
+    }
+    catch (error) {
+      this.logger.error(`Failed to process onboarding data: ${error.message}`);
+      // Return original data if conversion fails
+      return onboardingData;
     }
   }
 
