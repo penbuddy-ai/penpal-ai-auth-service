@@ -3,12 +3,19 @@ import * as argon2 from "argon2";
 
 import { User } from "../../interfaces/user.interface";
 import { DbServiceClient } from "./db-service.client";
+import {
+  PaymentServiceClient,
+  SubscriptionInfo,
+} from "./payment-service.client";
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly dbServiceClient: DbServiceClient) {}
+  constructor(
+    private readonly dbServiceClient: DbServiceClient,
+    private readonly paymentServiceClient: PaymentServiceClient,
+  ) {}
 
   async findByEmail(email: string): Promise<User | null> {
     try {
@@ -28,6 +35,50 @@ export class UsersService {
     }
     catch (error) {
       this.logger.error(`Error finding user by ID: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user with subscription information for /me endpoint
+   * This enriches the basic user data with subscription details from payment service
+   */
+  async findByIdWithSubscription(id: string): Promise<User | null> {
+    try {
+      // Get basic user data
+      const user = await this.dbServiceClient.findUserById(id);
+      if (!user) {
+        return null;
+      }
+
+      // Get subscription information (non-blocking)
+      let subscriptionInfo: SubscriptionInfo | null = null;
+      try {
+        subscriptionInfo
+          = await this.paymentServiceClient.getSubscriptionStatus(id);
+      }
+      catch (error) {
+        this.logger.warn(
+          `Failed to fetch subscription for user ${id}: ${error.message}`,
+        );
+        // Don't fail the whole request if payment service is down
+      }
+
+      // Enrich user data with subscription info
+      const enrichedUser: User = {
+        ...user,
+        subscriptionPlan: subscriptionInfo?.plan || null,
+        subscriptionStatus: subscriptionInfo?.status || null,
+        subscriptionTrialEnd: subscriptionInfo?.nextBillingDate || undefined,
+        hasActiveSubscription: subscriptionInfo?.isActive || false,
+      };
+
+      return enrichedUser;
+    }
+    catch (error) {
+      this.logger.error(
+        `Error finding user by ID with subscription: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -252,6 +303,38 @@ export class UsersService {
     }
     catch (error) {
       this.logger.error(`Error getting onboarding status: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Update user subscription information (called by payment service)
+   */
+  async updateUserSubscriptionInfo(
+    userId: string,
+    subscriptionData: {
+      plan?: "monthly" | "yearly";
+      status?: "trial" | "active" | "past_due" | "canceled" | "unpaid";
+      trialEnd?: Date;
+    },
+  ): Promise<any> {
+    try {
+      // Find the user first to make sure they exist
+      const existingUser = await this.findById(userId);
+      if (!existingUser) {
+        throw new Error("User not found");
+      }
+
+      // Forward subscription update to db service
+      return await this.dbServiceClient.updateUserSubscriptionInfo(
+        userId,
+        subscriptionData,
+      );
+    }
+    catch (error) {
+      this.logger.error(
+        `Error updating user subscription info: ${error.message}`,
+      );
       throw error;
     }
   }

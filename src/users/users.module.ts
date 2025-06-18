@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 
 import { UsersController } from "./controllers/users.controller";
 import { DbServiceClient } from "./services/db-service.client";
+import { PaymentServiceClient } from "./services/payment-service.client";
 import { UsersService } from "./services/users.service";
 
 @Module({
@@ -17,7 +18,7 @@ import { UsersService } from "./services/users.service";
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, DbServiceClient],
-  exports: [UsersService, DbServiceClient],
+  providers: [UsersService, DbServiceClient, PaymentServiceClient],
+  exports: [UsersService, DbServiceClient, PaymentServiceClient],
 })
 export class UsersModule {}

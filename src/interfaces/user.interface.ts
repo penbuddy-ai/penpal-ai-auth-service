@@ -12,4 +12,15 @@ export type User = {
   googleId?: string;
   role: string;
   refreshToken?: string;
+  // Subscription fields
+  subscriptionPlan?: "monthly" | "yearly" | null;
+  subscriptionStatus?:
+    | "trial"
+    | "active"
+    | "past_due"
+    | "canceled"
+    | "unpaid"
+    | null;
+  subscriptionTrialEnd?: Date;
+  hasActiveSubscription?: boolean;
 };

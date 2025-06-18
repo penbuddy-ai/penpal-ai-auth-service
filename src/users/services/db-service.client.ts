@@ -406,6 +406,46 @@ export class DbServiceClient {
     }
   }
 
+  /**
+   * Update user subscription information
+   */
+  async updateUserSubscriptionInfo(
+    userId: string,
+    subscriptionData: {
+      plan?: "monthly" | "yearly";
+      status?: "trial" | "active" | "past_due" | "canceled" | "unpaid";
+      trialEnd?: Date;
+    },
+  ): Promise<any> {
+    const url = `${this.dbServiceUrl}/users/${userId}/subscription`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .patch(url, subscriptionData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error updating user subscription info: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(
+        `Failed to update user subscription info: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
   private getServiceHeaders() {
     return {
       "x-api-key": this.apiKey,

@@ -9,6 +9,7 @@ import {
   Patch,
   Put,
   Request,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -130,7 +131,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async getCurrentUser(@Request() req) {
     this.logger.log(`Getting current user profile for user ID: ${req.user.id}`);
-    const user = await this.usersService.findById(req.user.id);
+    const user = await this.usersService.findByIdWithSubscription(req.user.id);
     if (!user) {
       return { message: "User not found" };
     }
@@ -326,5 +327,49 @@ export class UsersController {
   async getOnboardingStatus(@Request() req) {
     this.logger.log(`Checking onboarding status for user: ${req.user.id}`);
     return this.usersService.getOnboardingStatus(req.user.id);
+  }
+
+  // Internal API for payment service
+  @ApiOperation({ summary: "Update user subscription info (Internal API)" })
+  @ApiResponse({
+    status: 200,
+    description: "User subscription updated successfully",
+  })
+  @ApiResponse({ status: 404, description: "User not found" })
+  @ApiResponse({ status: 401, description: "Service not authorized" })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  @Patch(":userId/subscription")
+  async updateUserSubscription(
+    @Param("userId") userId: string,
+    @Body()
+    subscriptionData: {
+      plan?: "monthly" | "yearly";
+      status?: "trial" | "active" | "past_due" | "canceled" | "unpaid";
+      trialEnd?: Date;
+    },
+    @Request() req,
+  ) {
+    // Validate that this is a service-to-service call
+    const serviceKey = req.headers["x-service-key"];
+    const serviceName = req.headers["x-service-name"];
+
+    if (
+      !serviceKey
+      || serviceKey !== process.env.SERVICE_API_KEY
+      || serviceName !== "payment-service"
+    ) {
+      this.logger.warn(
+        `Unauthorized service call from ${serviceName || "unknown"}`,
+      );
+      throw new UnauthorizedException("Service not authorized");
+    }
+
+    this.logger.log(
+      `Updating subscription for user ${userId} from payment service`,
+    );
+    return this.usersService.updateUserSubscriptionInfo(
+      userId,
+      subscriptionData,
+    );
   }
 }
