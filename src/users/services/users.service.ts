@@ -2,11 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import * as argon2 from "argon2";
 
 import { User } from "../../interfaces/user.interface";
-import { DbServiceClient } from "./db-service.client";
-import {
-  PaymentServiceClient,
-  SubscriptionInfo,
-} from "./payment-service.client";
+import { DbServiceClient, SubscriptionInfo } from "./db-service.client";
 
 @Injectable()
 export class UsersService {
@@ -14,7 +10,6 @@ export class UsersService {
 
   constructor(
     private readonly dbServiceClient: DbServiceClient,
-    private readonly paymentServiceClient: PaymentServiceClient,
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
@@ -55,7 +50,7 @@ export class UsersService {
       let subscriptionInfo: SubscriptionInfo | null = null;
       try {
         subscriptionInfo
-          = await this.paymentServiceClient.getSubscriptionStatus(id);
+          = await this.dbServiceClient.getSubscriptionStatus(id);
       }
       catch (error) {
         this.logger.warn(
