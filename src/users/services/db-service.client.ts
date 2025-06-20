@@ -6,6 +6,17 @@ import { catchError, firstValueFrom } from "rxjs";
 
 import { User } from "../../interfaces/user.interface";
 
+export type SubscriptionInfo = {
+  hasSubscription: boolean;
+  isActive: boolean;
+  plan: "monthly" | "yearly" | null;
+  status: "trial" | "active" | "past_due" | "canceled" | "unpaid" | null;
+  trialActive: boolean;
+  daysRemaining: number;
+  nextBillingDate?: Date;
+  cancelAtPeriodEnd?: boolean;
+};
+
 @Injectable()
 export class DbServiceClient {
   private readonly logger = new Logger(DbServiceClient.name);
@@ -404,6 +415,108 @@ export class DbServiceClient {
       // Return original data if conversion fails
       return onboardingData;
     }
+  }
+
+  /**
+   * Update user subscription information
+   */
+  async updateUserSubscriptionInfo(
+    userId: string,
+    subscriptionData: {
+      plan?: "monthly" | "yearly";
+      status?: "trial" | "active" | "past_due" | "canceled" | "unpaid";
+      trialEnd?: Date;
+    },
+  ): Promise<any> {
+    const url = `${this.dbServiceUrl}/users/${userId}/subscription`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .patch(url, subscriptionData, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error updating user subscription info: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(
+        `Failed to update user subscription info: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get subscription status for a user from db-service
+   * Returns null if db service is unavailable to avoid blocking user login
+   */
+  async getSubscriptionStatus(
+    userId: string,
+  ): Promise<SubscriptionInfo | null> {
+    const url = `${this.dbServiceUrl}/subscriptions/user/${userId}/status/auth-service`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+            timeout: 5000, // 5 second timeout to avoid blocking
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              // For 404 (no subscription), return empty array like other methods
+              if (error.response?.status === 404) {
+                return [];
+              }
+
+              this.logger.error(
+                `Error getting subscription status for user ${userId}: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      // If error is empty array from 404, return default subscription info
+      if (Array.isArray(error) && error.length === 0) {
+        return {
+          hasSubscription: false,
+          isActive: false,
+          plan: null,
+          status: null,
+          trialActive: false,
+          daysRemaining: 0,
+        };
+      }
+
+      this.logger.warn(
+        `Failed to get subscription status for user ${userId}, db service may be down: ${error.message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Check if user has active subscription (convenience method)
+   */
+  async hasActiveSubscription(userId: string): Promise<boolean> {
+    const subscriptionInfo = await this.getSubscriptionStatus(userId);
+    return subscriptionInfo?.isActive || false;
   }
 
   private getServiceHeaders() {
