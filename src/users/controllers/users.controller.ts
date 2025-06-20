@@ -119,6 +119,8 @@ export class UsersController {
           enum: ["trial", "active", "past_due", "canceled", "unpaid"],
         },
         subscriptionTrialEnd: { type: "string", format: "date-time" },
+        hasActiveSubscription: { type: "boolean" },
+        cancelAtPeriodEnd: { type: "boolean" },
       },
     },
   })

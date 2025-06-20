@@ -8,9 +8,7 @@ import { DbServiceClient, SubscriptionInfo } from "./db-service.client";
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(
-    private readonly dbServiceClient: DbServiceClient,
-  ) {}
+  constructor(private readonly dbServiceClient: DbServiceClient) {}
 
   async findByEmail(email: string): Promise<User | null> {
     try {
@@ -49,8 +47,7 @@ export class UsersService {
       // Get subscription information (non-blocking)
       let subscriptionInfo: SubscriptionInfo | null = null;
       try {
-        subscriptionInfo
-          = await this.dbServiceClient.getSubscriptionStatus(id);
+        subscriptionInfo = await this.dbServiceClient.getSubscriptionStatus(id);
       }
       catch (error) {
         this.logger.warn(
@@ -66,6 +63,7 @@ export class UsersService {
         subscriptionStatus: subscriptionInfo?.status || null,
         subscriptionTrialEnd: subscriptionInfo?.nextBillingDate || undefined,
         hasActiveSubscription: subscriptionInfo?.isActive || false,
+        cancelAtPeriodEnd: subscriptionInfo?.cancelAtPeriodEnd || false,
       };
 
       return enrichedUser;

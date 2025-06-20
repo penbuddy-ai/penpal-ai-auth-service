@@ -23,4 +23,5 @@ export type User = {
     | null;
   subscriptionTrialEnd?: Date;
   hasActiveSubscription?: boolean;
+  cancelAtPeriodEnd?: boolean;
 };
