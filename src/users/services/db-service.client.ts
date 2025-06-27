@@ -30,7 +30,7 @@ export class DbServiceClient {
   ) {
     this.dbServiceUrl
       = this.configService.get<string>("DB_SERVICE_URL")
-        || "http://localhost:3001";
+        || "http://localhost:3001/api/v1";
     this.apiKey = this.configService.get<string>("DB_SERVICE_API_KEY") || "";
 
     if (!this.apiKey) {
