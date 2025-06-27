@@ -374,4 +374,19 @@ export class UsersController {
       subscriptionData,
     );
   }
+
+  /**
+   * Get user metrics for monitoring
+   * Endpoint used by monitoring service to collect user statistics
+   */
+  @Get("metrics")
+  @ApiOperation({ summary: "Get user metrics for monitoring" })
+  @ApiResponse({
+    status: 200,
+    description: "User metrics retrieved successfully",
+  })
+  async getUserMetrics() {
+    const metrics = await this.usersService.getUserMetrics();
+    return metrics;
+  }
 }

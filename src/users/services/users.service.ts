@@ -331,4 +331,23 @@ export class UsersService {
       throw error;
     }
   }
+
+  /**
+   * Get user metrics for monitoring
+   * Returns aggregated user statistics for Prometheus metrics
+   */
+  async getUserMetrics(): Promise<{
+    activeUsers: number;
+    totalUsers: number;
+    usersByLanguage: Record<string, number>;
+    averageUserLevel: Record<string, number>;
+  }> {
+    try {
+      return await this.dbServiceClient.getUserMetrics();
+    }
+    catch (error) {
+      this.logger.error(`Error getting user metrics: ${error.message}`);
+      throw error;
+    }
+  }
 }

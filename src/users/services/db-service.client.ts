@@ -519,6 +519,43 @@ export class DbServiceClient {
     return subscriptionInfo?.isActive || false;
   }
 
+  /**
+   * Get user metrics for monitoring
+   * Returns aggregated statistics about users
+   */
+  async getUserMetrics(): Promise<{
+    activeUsers: number;
+    totalUsers: number;
+    usersByLanguage: Record<string, number>;
+    averageUserLevel: Record<string, number>;
+  }> {
+    const url = `${this.dbServiceUrl}/users/metrics`;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService
+          .get(url, {
+            headers: this.getServiceHeaders(),
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              this.logger.error(
+                `Error getting user metrics: ${error.message}`,
+                error.stack,
+              );
+              throw error;
+            }),
+          ),
+      );
+
+      return data;
+    }
+    catch (error) {
+      this.logger.error(`Failed to get user metrics: ${error.message}`);
+      throw error;
+    }
+  }
+
   private getServiceHeaders() {
     return {
       "x-api-key": this.apiKey,
