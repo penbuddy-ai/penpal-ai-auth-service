@@ -109,19 +109,14 @@ export class OAuthController {
 
       this.logger.log(`✅ OAuth token exchange successful for: ${authResult.user.email}`);
 
-      // Verify user exists in database
-      this.logger.log(`🔍 Looking up user in database: ${authResult.user.email}`);
-      const user = await this.dbServiceClient.findUserByEmail(authResult.user.email);
-      if (!user) {
-        this.logger.error(`❌ User not found in database: ${authResult.user.email}`);
-        throw new UnauthorizedException("User not found");
-      }
+      // User data is already validated by handleGoogleOAuthCallback
+      const user = authResult.user;
 
-      this.logger.log(`✅ User found in database: ${user.email} (ID: ${user._id})`);
+      this.logger.log(`✅ User authenticated: ${user.email} (ID: ${user.id})`);
 
       // Validate user data
-      if (!user._id) {
-        this.logger.error(`❌ User ${user.email} has no ID in database response`);
+      if (!user.id) {
+        this.logger.error(`❌ User ${user.email} has no ID in auth response`);
         throw new UnauthorizedException("Invalid user data");
       }
 
@@ -130,7 +125,7 @@ export class OAuthController {
 
       // Store user data temporarily with the session token
       const pendingAuth: PendingAuth = {
-        userId: user._id,
+        userId: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,

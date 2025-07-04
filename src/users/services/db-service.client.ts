@@ -2,7 +2,7 @@ import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AxiosError } from "axios";
-import { catchError, firstValueFrom } from "rxjs";
+import { catchError, firstValueFrom, of } from "rxjs";
 
 import { User } from "../../interfaces/user.interface";
 
@@ -117,7 +117,7 @@ export class DbServiceClient {
           .pipe(
             catchError((error: AxiosError) => {
               if (error.response?.status === 404) {
-                return [];
+                return of({ data: null });
               }
               this.logger.error(
                 `Error finding user by OAuth: ${error.message}`,
@@ -131,9 +131,6 @@ export class DbServiceClient {
       return data;
     }
     catch (error) {
-      if (error.length === 0) {
-        return null;
-      }
       this.logger.error(`Failed to find user by OAuth: ${error.message}`);
       throw error;
     }

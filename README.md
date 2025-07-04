@@ -8,8 +8,9 @@ This service follows a microservice architecture pattern where:
 
 - **Auth Service** (this service): Manages authentication, user registration, and OAuth integrations with advanced security
 - **DB Service** (separate): Handles all database operations and is the only service with direct database access
+- **Notification Service** (separate): Handles email notifications including welcome emails for new users
 
-The Auth Service communicates with the DB Service via HTTP requests, maintaining a clear separation of concerns.
+The Auth Service communicates with the DB Service and Notification Service via HTTP requests, maintaining a clear separation of concerns.
 
 ## Features
 
@@ -21,6 +22,7 @@ The Auth Service communicates with the DB Service via HTTP requests, maintaining
 - Password reset functionality
 - Email verification
 - Role-based access control
+- **Automated welcome emails** for new OAuth users
 
 ### Security Features
 
@@ -49,68 +51,74 @@ The Auth Service communicates with the DB Service via HTTP requests, maintaining
 - [Mongoose](https://mongoosejs.com/) - MongoDB object modeling
 - [Passport](https://www.passportjs.org/) - Authentication middleware
 - [JWT](https://jwt.io/) - JSON Web Tokens for secure authentication
-- [Argon2](https://github.com/ranisalt/node-argon2) - Password hashing
-- [LRU Cache](https://github.com/isaacs/node-lru-cache) - Secure state and session management
+- [Nodemailer](https://nodemailer.com/) - Email service integration (via notification service)
 
-## Environment Variables
+## Getting Started
 
-Copy the `.env.example` file to a new file named `.env`:
+### Prerequisites
 
-```bash
-cp .env.example .env
-```
+- Node.js 18+ and npm
+- MongoDB instance running
+- Notification service running (for email functionality)
+- Google OAuth credentials (for Google authentication)
 
-Then update the values in the `.env` file:
+### Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
 
 ```env
-# Server Configuration
-PORT=3000
-NODE_ENV=development
+# Database Service
+DB_SERVICE_URL=http://localhost:3001/api/v1
+DB_SERVICE_API_KEY=your-db-service-api-key
+
+# Notification Service
+NOTIFICATION_SERVICE_URL=http://localhost:3002/api/v1
+NOTIFY_SERVICE_API_KEY=your-notify-service-api-key
 
 # JWT Configuration
-JWT_SECRET=your_strong_jwt_secret_here
+JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=1d
 
-# DB Service Configuration
-DB_SERVICE_URL=http://localhost:3001
-DB_SERVICE_API_KEY=your_api_key_here
-
-# OAuth Configuration
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=http://localhost:3000/api/v1/auth/oauth/google/callback
 
 # Frontend Configuration
 FRONTEND_URL=http://localhost:5173
 
-# Security Configuration (Optional)
-OAUTH_MAX_ATTEMPTS=10
-OAUTH_WINDOW_MS=900000        # 15 minutes in milliseconds
-OAUTH_BLOCK_DURATION_MS=3600000  # 1 hour in milliseconds
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+```
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Start the service
+npm run start:dev
 ```
 
 ## API Endpoints
 
 ### Authentication
 
-#### Traditional Authentication (Secure Implementation)
+- `POST /api/v1/auth/register` - Register a new user with email/password
+- `POST /api/v1/auth/login` - Login with email/password
+- `POST /api/v1/auth/logout` - Logout and invalidate token
 
-- `POST /api/v1/auth/register` - Register a new user with security validation
-- `POST /api/v1/auth/login` - Login a user with rate limiting and monitoring
-- `POST /api/v1/auth/logout` - Secure logout with cookie cleanup
-- `GET /api/v1/auth/security/stats` - Get authentication security statistics
+### OAuth 2.0 (Google)
 
-#### OAuth Authentication (Secure Implementation)
+- `GET /api/v1/auth/oauth/google` - Initiate Google OAuth flow
+- `GET /api/v1/auth/oauth/google/callback` - Handle Google OAuth callback
+- `POST /api/v1/auth/oauth/google/mobile` - Handle mobile Google OAuth (coming soon)
 
-- `GET /api/v1/auth/oauth/google/login` - Initiate secure Google OAuth login with PKCE
-- `GET /api/v1/auth/oauth/google/callback` - Google OAuth callback with comprehensive validation
-- `GET /api/v1/auth/oauth/session/user` - Retrieve user data after OAuth completion
-- `POST /api/v1/auth/oauth/facebook` - Facebook OAuth authentication
-- `POST /api/v1/auth/oauth/apple` - Apple OAuth authentication
-- `POST /api/v1/auth/oauth/github` - GitHub OAuth authentication
+### OAuth Security Endpoints
 
-#### Security Monitoring
-
+- `GET /api/v1/auth/oauth/security/status` - Get security monitoring status
 - `GET /api/v1/auth/oauth/security/stats` - Get security statistics (admin only)
 
 ### Protected Routes
@@ -129,6 +137,23 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ### Health Check
 
 - `GET /api/v1/health` - Check service health
+
+## Notification Integration
+
+When a new user registers via OAuth (e.g., Google), the service automatically:
+
+1. **Detects new user registration** - Checks if the OAuth user already exists
+2. **Sends welcome email** - Calls the notification service to send a personalized welcome email
+3. **Non-blocking operation** - Email sending doesn't block the authentication flow
+4. **Error resilience** - Authentication succeeds even if email sending fails
+
+### Welcome Email Features
+
+- **Personalized content** - Uses user's name and OAuth provider
+- **Responsive design** - Works on all email clients
+- **Multi-language support** - Currently in French, easily extensible
+- **Call-to-action** - Direct link to user dashboard
+- **Professional branding** - Consistent with Penpal AI brand
 
 ## Security Features Detail
 
@@ -157,75 +182,15 @@ Our OAuth implementation follows the latest security best practices:
 
 ### Rate Limiting & Protection
 
-- **Intelligent Rate Limiting**: IP and User-Agent based rate limiting with configurable thresholds
-- **Automatic IP Blocking**: Suspicious IPs are automatically blocked for configurable duration
-- **Parameter Injection Protection**: All request parameters are validated against injection attacks
-- **User-Agent Validation**: Suspicious user agents are detected and logged
+- **Smart Rate Limiting**: Different limits for different endpoints with progressive penalties
+- **IP-based Protection**: Automatic blocking of suspicious IP addresses
+- **Time-window Protection**: Sliding window rate limiting with automatic reset
+- **Geographic Monitoring**: Optional geographic-based anomaly detection
+- **Real-time Alerting**: Immediate notifications for potential security threats
 
-### Secure Cookie Management
+## Development
 
-- **httpOnly**: Prevents JavaScript access to authentication cookies
-- **Secure**: Cookies only sent over HTTPS in production
-- **SameSite**: Strict CSRF protection
-- **Domain Scoped**: Proper domain scoping for multi-subdomain deployments
-
-## OAuth Flow Security
-
-### Secure Authorization Flow
-
-1. **Initiation**: `/auth/oauth/google/login`
-
-   - Generates secure state with PKCE challenge
-   - Validates redirect URLs against allowlist
-   - Applies rate limiting and security checks
-
-2. **Callback**: `/auth/oauth/google/callback`
-
-   - Validates state parameter with timing-safe comparison
-   - Exchanges code for tokens using PKCE verifier
-   - Verifies ID token signature, nonce, and claims
-   - Cross-validates user information
-   - Generates temporary session token
-
-3. **Completion**: `/auth/oauth/session/user`
-   - Exchanges session token for user data
-   - One-time use tokens with automatic cleanup
-   - Secure user data transfer
-
-## Monitoring & Observability
-
-The service provides comprehensive security monitoring:
-
-- **Security Events**: All authentication attempts, failures, and suspicious activities
-- **Rate Limiting Status**: Current rate limit status per IP
-- **Anomaly Detection**: Automatic detection of unusual patterns
-- **Audit Trails**: Complete audit logs for compliance
-
-### Security Statistics
-
-Access comprehensive security statistics for both authentication methods:
-
-- OAuth: `/api/v1/auth/oauth/security/stats`
-- Traditional Auth: `/api/v1/auth/security/stats`
-
-```json
-{
-  "totalEvents": 150,
-  "suspiciousIPs": 2,
-  "rateLimitedIPs": 5,
-  "recentEvents": [
-    {
-      "ip": "192.168.1.100",
-      "userAgent": "Mozilla/5.0...",
-      "timestamp": 1703123456789,
-      "event": "oauth_success",
-      "details": "Successful OAuth for user@example.com"
-    }
-  ]
-}
-```
-
-## Testing
+### Running Tests
 
 ```bash
 # Unit tests
@@ -236,77 +201,48 @@ npm run test:e2e
 
 # Test coverage
 npm run test:cov
-
-# Linting
-npm run lint
-
-# Format code
-npm run format
 ```
 
-## Installation
+### Building for Production
 
 ```bash
-npm install
-```
+# Build the application
+npm run build
 
-## Running the app
-
-```bash
-# development
-npm run start
-
-# watch mode
-npm run start:dev
-
-# production mode
+# Start in production mode
 npm run start:prod
-```
-
-## Production Deployment
-
-### Security Considerations
-
-1. **Environment Variables**: Ensure all sensitive environment variables are properly set
-2. **HTTPS**: Always use HTTPS in production
-3. **Rate Limiting**: Configure appropriate rate limits based on your traffic patterns
-4. **Monitoring**: Set up monitoring for security events and anomalies
-5. **Domain Configuration**: Properly configure frontend and callback URLs
-6. **Secret Management**: Use proper secret management for JWT secrets and OAuth credentials
-
-### Recommended Production Configuration
-
-```env
-NODE_ENV=production
-FRONTEND_URL=https://your-frontend-domain.com
-GOOGLE_CALLBACK_URL=https://your-api-domain.com/api/v1/auth/oauth/google/callback
-OAUTH_MAX_ATTEMPTS=5
-OAUTH_WINDOW_MS=600000      # 10 minutes
-OAUTH_BLOCK_DURATION_MS=1800000  # 30 minutes
 ```
 
 ## Troubleshooting
 
-### Common OAuth Issues
+### Common Issues
 
-1. **State Mismatch**: Ensure cookies are enabled and properly configured
-2. **Invalid Redirect URI**: Verify callback URLs match exactly in OAuth provider settings
-3. **Rate Limited**: Check security statistics and adjust rate limits if needed
-4. **CORS Issues**: Ensure proper CORS configuration for frontend domains
+1. **Email notifications not working**
 
-### Security Logs
+   - Check `NOTIFICATION_SERVICE_URL` and `NOTIFY_SERVICE_API_KEY` environment variables
+   - Ensure notification service is running and accessible
+   - Check notification service logs for email configuration issues
 
-Monitor security events in application logs:
+2. **Google OAuth errors**
 
-- `oauth_success`: Successful authentications
-- `oauth_failure`: Failed authentication attempts
-- `rate_limit_exceeded`: Rate limit violations
-- `suspicious_ip`: Suspicious activity detected
-- `parameter_injection`: Injection attempt detected
+   - Verify Google OAuth credentials in environment variables
+   - Check OAuth callback URL matches Google Console configuration
+   - Ensure frontend URL is correctly configured
+
+3. **Database connection issues**
+   - Verify `DB_SERVICE_URL` and `DB_SERVICE_API_KEY`
+   - Check if DB service is running and accessible
+   - Review database connection logs
+
+### Monitoring
+
+- Check `/api/v1/health` endpoint for service health
+- Monitor security statistics via `/api/v1/auth/oauth/security/stats`
+- Review application logs for detailed error information
 
 ## License
 
-This project is proprietary and confidential.
+This project is licensed under the MIT License.
 
 ## Contributors
 

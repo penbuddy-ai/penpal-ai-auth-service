@@ -3,12 +3,21 @@ import * as argon2 from "argon2";
 
 import { User } from "../../interfaces/user.interface";
 import { DbServiceClient, SubscriptionInfo } from "./db-service.client";
+import { NotificationServiceClient } from "./notification-service.client";
+
+export type OAuthUserResult = {
+  user: User;
+  isNewUser: boolean;
+};
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly dbServiceClient: DbServiceClient) {}
+  constructor(
+    private readonly dbServiceClient: DbServiceClient,
+    private readonly notificationServiceClient: NotificationServiceClient,
+  ) {}
 
   async findByEmail(email: string): Promise<User | null> {
     try {
@@ -88,8 +97,9 @@ export class UsersService {
       return user;
     }
     catch (error) {
-      this.logger.error(`Error finding user by OAuth: ${error.message}`);
-      throw error;
+      // Log the error but don't throw it - return null for non-existent users
+      this.logger.debug(`User not found by OAuth ${provider}:${providerId} - ${error.message}`);
+      return null;
     }
   }
 
@@ -155,16 +165,66 @@ export class UsersService {
     }
   }
 
-  async createOrUpdateOAuthUser(oauthUserData: any): Promise<User> {
+  async createOrUpdateOAuthUser(oauthUserData: any): Promise<OAuthUserResult> {
     try {
-      const user
-        = await this.dbServiceClient.createOrUpdateOAuthUser(oauthUserData);
-      return user;
+      // First, check if user already exists
+      const existingUser = await this.findByOAuth(
+        oauthUserData.profile.provider,
+        oauthUserData.profile.providerId,
+      );
+
+      const isNewUser = !existingUser;
+
+      this.logger.log(`OAuth user ${isNewUser ? "creation" : "update"} for: ${oauthUserData.profile.email}`);
+
+      // Create or update the user via the DB service
+      const user = await this.dbServiceClient.createOrUpdateOAuthUser(oauthUserData);
+
+      // If it's a new user, send welcome email (non-blocking)
+      if (isNewUser && user) {
+        this.sendWelcomeEmailAsync(user, oauthUserData.profile.provider);
+      }
+
+      return {
+        user,
+        isNewUser,
+      };
     }
     catch (error) {
       this.logger.error(`Error creating/updating OAuth user: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Send welcome email asynchronously (non-blocking)
+   */
+  private async sendWelcomeEmailAsync(user: User, provider: string): Promise<void> {
+    // Run this asynchronously to not block the OAuth flow
+    setImmediate(async () => {
+      try {
+        this.logger.log(`Sending welcome email for new OAuth user: ${user.email}`);
+
+        const emailSent = await this.notificationServiceClient.sendWelcomeEmail({
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          provider,
+          userId: user._id,
+        });
+
+        if (emailSent) {
+          this.logger.log(`Welcome email sent successfully for: ${user.email}`);
+        }
+        else {
+          this.logger.warn(`Welcome email failed for: ${user.email}`);
+        }
+      }
+      catch (error) {
+        this.logger.error(`Error sending welcome email for ${user.email}: ${error.message}`);
+        // Don't throw - welcome email failure shouldn't affect user registration
+      }
+    });
   }
 
   async updateProfile(

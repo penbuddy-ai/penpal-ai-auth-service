@@ -323,7 +323,14 @@ export class OAuthService {
       };
 
       // Create or update the user via the UsersService
-      const user = await this.usersService.createOrUpdateOAuthUser(oauthUserData);
+      const { user, isNewUser } = await this.usersService.createOrUpdateOAuthUser(oauthUserData);
+
+      if (isNewUser) {
+        this.logger.log(`New user registered via Google OAuth: ${user.email}`);
+      }
+      else {
+        this.logger.log(`Existing user logged in via Google OAuth: ${user.email}`);
+      }
 
       // Generate a JWT token for the user
       return this.generateToken(user);
