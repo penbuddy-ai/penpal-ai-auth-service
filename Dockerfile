@@ -49,7 +49,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
+COPY --from=builder /usr/src/app/node_modules ./node_modules
 
 # Copy built application from builder
 COPY --from=builder /usr/src/app/dist ./dist
