@@ -40,7 +40,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Set environment variables
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV} \
-    PORT=3001
+    PORT=3002
 
 # Create app directory
 WORKDIR /usr/src/app
