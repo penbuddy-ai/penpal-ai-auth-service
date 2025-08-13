@@ -2,7 +2,7 @@ name: Build & Push (service) + Coolify Deploy
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   build-and-push:
@@ -51,17 +51,16 @@ jobs:
             ghcr.io/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.branch_tag }}
             ghcr.io/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha_tag }}
 
-      - name: Trigger Coolify deploy (staging)
-        if: github.ref_name == 'develop'
-        run: |
-          curl -fsSL -X POST \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
-            "${{ secrets.COOLIFY_STAGING_WEBHOOK_URL }}"
+      # - name: Trigger Coolify deploy (staging)
+      #   if: github.ref_name == 'develop'
+      #   run: |
+      #     curl -fsSL -X POST \
+      #       -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+      #       "${{ secrets.COOLIFY_STAGING_WEBHOOK_URL }}"
 
-      - name: Trigger Coolify deploy (production)
-        if: github.ref_name == 'main'
-        run: |
-          curl -fsSL -X POST \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
-            "${{ secrets.COOLIFY_PROD_WEBHOOK_URL }}"
-
+      # - name: Trigger Coolify deploy (production)
+      #   if: github.ref_name == 'main'
+      #   run: |
+      #     curl -fsSL -X POST \
+      #       -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+      #       "${{ secrets.COOLIFY_PROD_WEBHOOK_URL }}"
