@@ -140,7 +140,7 @@ export class OAuthController {
       const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict" as const, // Strict CSRF protection
+        sameSite: (process.env.NODE_ENV === "production" ? "lax" : "strict") as "lax" | "strict", // More flexible in production for cross-origin scenarios
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         path: "/",
         domain: process.env.NODE_ENV === "production" ? this.getDomainFromUrl(this.oauthService.getFrontendRedirectUrl()) : undefined,
@@ -420,7 +420,16 @@ export class OAuthController {
   private getDomainFromUrl(url: string): string | undefined {
     try {
       const parsedUrl = new URL(url);
-      return parsedUrl.hostname;
+      const hostname = parsedUrl.hostname;
+
+      if (process.env.NODE_ENV === "production") {
+        const parts = hostname.split(".");
+        if (parts.length >= 2) {
+          return `.${parts.slice(-2).join(".")}`;
+        }
+      }
+
+      return hostname;
     }
     catch {
       return undefined;

@@ -91,7 +91,7 @@ export class AuthController {
       const cookieOptions = {
         httpOnly: true, // Prevents client-side JavaScript access
         secure: process.env.NODE_ENV === "production", // HTTPS only in production
-        sameSite: "strict" as const, // Strict CSRF protection (upgraded from 'lax')
+        sameSite: (process.env.NODE_ENV === "production" ? "lax" : "strict") as "lax" | "strict", // More flexible in production for cross-origin scenarios
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         path: "/", // Available site-wide
         domain: process.env.NODE_ENV === "production" ? this.getDomainFromUrl(process.env.FRONTEND_URL || "http://localhost:3000") : undefined,
@@ -284,7 +284,16 @@ export class AuthController {
   private getDomainFromUrl(url: string): string | undefined {
     try {
       const parsed = new URL(url);
-      return parsed.hostname;
+      const hostname = parsed.hostname;
+
+      if (process.env.NODE_ENV === "production") {
+        const parts = hostname.split(".");
+        if (parts.length >= 2) {
+          return `.${parts.slice(-2).join(".")}`;
+        }
+      }
+
+      return hostname;
     }
     catch {
       return undefined;
