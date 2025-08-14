@@ -1,11 +1,11 @@
-import type { TestingModule } from "@nestjs/testing";
+import type { TestingModule } from '@nestjs/testing';
 
-import { Test } from "@nestjs/testing";
+import { Test } from '@nestjs/testing';
 
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
-describe("appController", () => {
+describe('appController', () => {
   let appController: AppController;
 
   beforeEach(async () => {
@@ -17,9 +17,9 @@ describe("appController", () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe("root", () => {
-    it("should return \"Hello World!\"", () => {
-    // Controller may not expose getHello anymore; basic truthy check instead
+  describe('root', () => {
+    it('should return "Hello World!"', () => {
+      // Controller may not expose getHello anymore; basic truthy check instead
       expect(appController).toBeDefined();
     });
   });
