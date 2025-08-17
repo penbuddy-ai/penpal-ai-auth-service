@@ -136,12 +136,22 @@ describe("usersService", () => {
   });
 
   describe("createUser", () => {
-    it("hashes password and delegates to db", async () => {
+    it("hashes password, delegates to db, and sends welcome email", async () => {
       (argon2.hash as jest.Mock).mockResolvedValue("hashed");
       dbClient.createUser.mockResolvedValue(user);
       const created = await service.createUser({ firstName: "A", lastName: "B", email: user.email, password: "p" });
       expect(dbClient.createUser).toHaveBeenCalledWith(expect.objectContaining({ password: "hashed" }));
       expect(created).toEqual(user);
+
+      // Give a moment for the async welcome email to be triggered
+      await new Promise(resolve => setImmediate(resolve));
+      expect(_notifClient.sendWelcomeEmail).toHaveBeenCalledWith({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        provider: "email",
+        userId: user._id,
+      });
     });
   });
 

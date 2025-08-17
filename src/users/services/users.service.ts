@@ -149,13 +149,17 @@ export class UsersService {
   }): Promise<User> {
     try {
       // Hash the password before sending to db-service
-      this.logger.log(`Hashing password: ${userData.password}`);
       const hashedPassword = await argon2.hash(userData.password);
 
       const user = await this.dbServiceClient.createUser({
         ...userData,
         password: hashedPassword,
       });
+
+      // Send welcome email for new user
+      if (user) {
+        this.sendWelcomeEmailAsync(user, "email");
+      }
 
       return user;
     }
@@ -180,7 +184,7 @@ export class UsersService {
       // Create or update the user via the DB service
       const user = await this.dbServiceClient.createOrUpdateOAuthUser(oauthUserData);
 
-      // If it's a new user, send welcome email (non-blocking)
+      // If it's a new user, send welcome email
       if (isNewUser && user) {
         this.sendWelcomeEmailAsync(user, oauthUserData.profile.provider);
       }
@@ -199,11 +203,11 @@ export class UsersService {
   /**
    * Send welcome email asynchronously (non-blocking)
    */
-  private async sendWelcomeEmailAsync(user: User, provider: string): Promise<void> {
-    // Run this asynchronously to not block the OAuth flow
+  private async sendWelcomeEmailAsync(user: User, provider: string = "email"): Promise<void> {
+    // Run this asynchronously to not block the registration flow
     setImmediate(async () => {
       try {
-        this.logger.log(`Sending welcome email for new OAuth user: ${user.email}`);
+        this.logger.log(`Sending welcome email for new user (${provider}): ${user.email}`);
 
         const emailSent = await this.notificationServiceClient.sendWelcomeEmail({
           email: user.email,
