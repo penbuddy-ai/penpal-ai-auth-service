@@ -19,7 +19,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release:patch": "npm version patch && git push origin $(git describe --tags --abbrev=0)",
+    "release:minor": "npm version minor && git push origin $(git describe --tags --abbrev=0)",
+    "release:major": "npm version major && git push origin $(git describe --tags --abbrev=0)"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.0",
