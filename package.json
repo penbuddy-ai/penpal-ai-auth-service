@@ -1,6 +1,6 @@
 {
   "name": "penpal-ai-auth-service",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Authentication microservice for Penpal AI application",
   "author": "",
   "license": "UNLICENSED",
