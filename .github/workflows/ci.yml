@@ -3,10 +3,11 @@ name: Build & Push (service) + Coolify Deploy
 on:
   push:
     branches: [main, develop]
+    tags: ["v*.*.*"]
 
 jobs:
   test:
-    name: Unit & e2e tests
+    name: Unit & E2E Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,10 +22,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run lint
+        run: npm run lint
+
       - name: Run unit tests
         run: npm test -- --runInBand
 
-      - name: Run e2e tests
+      - name: Run unit tests with coverage
+        run: npm run test:cov -- --runInBand
+
+      - name: Run E2E tests
         run: npm run test:e2e -- --runInBand
 
   build-and-push:
@@ -58,12 +65,35 @@ jobs:
       - name: Compute tags
         id: tags
         run: |
-          BRANCH_TAG="${REF_SLUG}-latest"
+          if [[ "${GITHUB_REF}" == refs/tags/v*.*.* ]]; then
+            # Version tag (v1.2.3)
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version_tag=${VERSION}" >> $GITHUB_OUTPUT
+            echo "is_version=true" >> $GITHUB_OUTPUT
+          else
+            # Branch push
+            BRANCH_TAG="${REF_SLUG}-latest"
+            echo "branch_tag=${BRANCH_TAG}" >> $GITHUB_OUTPUT
+            echo "is_version=false" >> $GITHUB_OUTPUT
+          fi
           SHA_TAG="sha-${GITHUB_SHA::7}"
-          echo "branch_tag=${BRANCH_TAG}" >> $GITHUB_OUTPUT
           echo "sha_tag=${SHA_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Build & push image
+      - name: Build & push image (version)
+        if: steps.tags.outputs.is_version == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.version_tag }}
+            ghcr.io/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha_tag }}
+            ghcr.io/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Build & push image (branch)
+        if: steps.tags.outputs.is_version == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
