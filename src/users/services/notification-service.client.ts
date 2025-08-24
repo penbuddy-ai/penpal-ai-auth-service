@@ -31,7 +31,7 @@ export class NotificationServiceClient {
   ) {
     this.notificationServiceUrl
       = this.configService.get<string>("NOTIFICATION_SERVICE_URL")
-        || "http://localhost:3006/api/v1";
+        || "http://localhost:3007/api/v1";
     this.apiKey
       = this.configService.get<string>("NOTIFY_SERVICE_API_KEY") || "";
 
